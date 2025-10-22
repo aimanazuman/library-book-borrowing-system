@@ -1,5 +1,4 @@
-﻿// Controllers/BorrowRecordsController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using LibrarySystem.Data;
 using LibrarySystem.Models;
@@ -24,7 +23,7 @@ namespace LibrarySystem.Controllers
             return await _context.BorrowRecords.Include(br => br.Book).ToListAsync();
         }
 
-        // GET: api/BorrowRecords/5
+        // GET: api/BorrowRecords/[numbers such as 4]
         [HttpGet("{id}")]
         public async Task<ActionResult<BorrowRecord>> GetBorrowRecord(int id)
         {
@@ -65,7 +64,7 @@ namespace LibrarySystem.Controllers
             return CreatedAtAction(nameof(GetBorrowRecord), new { id = record.RecordId }, record);
         }
 
-        // PUT: api/BorrowRecords/Return/5 (Return Book)
+        // PUT: api/BorrowRecords/Return/[numbers such as 4] (Return Book)
         [HttpPut("Return/{id}")]
         public async Task<IActionResult> ReturnBook(int id)
         {
@@ -93,7 +92,7 @@ namespace LibrarySystem.Controllers
             return NoContent();
         }
 
-        // DELETE: api/BorrowRecords/5
+        // DELETE: api/BorrowRecords/[numbers such as 4]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBorrowRecord(int id)
         {

@@ -1,0 +1,123 @@
+﻿@{
+    ViewData["Title"] = "Add Book";
+}
+
+<h1>Add New Book</h1>
+<div id="addBookMessage" class="message"></div>
+
+<div class="form-container">
+    <form id="addBookForm">
+        <div class="form-group">
+            <label>Title *</label>
+            <input type="text" id="bookTitle" required>
+        </div>
+
+        <div class="form-group">
+            <label>Author *</label>
+            <input type="text" id="bookAuthor" required>
+        </div>
+
+        <div class="form-group">
+            <label>ISBN *</label>
+            <input type="text" id="bookISBN" required>
+        </div>
+
+        <div class="form-group">
+            <label>Category</label>
+            <input type="text" id="bookCategory" placeholder="e.g., Fiction, Science, History">
+        </div>
+
+        <div class="form-group">
+            <label>Section *</label>
+            <select id="bookSection" required>
+                <option value="">Loading sections...</option>
+            </select>
+            <small id="sectionDescription" style="display: block; margin-top: 0.5rem; color: #7f8c8d;"></small>
+        </div>
+
+        <div class="form-group">
+            <label>Rack ID *</label>
+            <select id="bookRackId" required>
+                <option value="">Select section first</option>
+            </select>
+        </div>
+
+        <button type="submit">Add Book</button>
+        <button type="reset" class="btn-secondary">Clear Form</button>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        let sectionsData = [];
+
+        async function loadSectionsForForm() {
+            try {
+                const response = await fetch(`${window.API_URL}/sections`);
+                sectionsData = await response.json();
+
+                const select = document.getElementById('bookSection');
+                select.innerHTML = '<option value="">Select Section</option>';
+
+                sectionsData.forEach(section => {
+                    const option = document.createElement('option');
+                    option.value = section.sectionId;
+                    option.textContent = section.sectionName;
+                    option.dataset.description = section.description;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                document.getElementById('bookSection').innerHTML = '<option value="">Error loading sections</option>';
+            }
+        }
+
+        document.getElementById('bookSection')?.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const description = selectedOption.dataset.description;
+            const descEl = document.getElementById('sectionDescription');
+
+            if (description) {
+                descEl.textContent = description;
+                descEl.style.display = 'block';
+            } else {
+                descEl.style.display = 'none';
+            }
+
+            updateRackDropdown(parseInt(this.value));
+        });
+
+        document.getElementById('addBookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const book = {
+                title: document.getElementById('bookTitle').value,
+                author: document.getElementById('bookAuthor').value,
+                isbn: document.getElementById('bookISBN').value,
+                category: document.getElementById('bookCategory').value,
+                sectionId: parseInt(document.getElementById('bookSection').value),
+                rackId: document.getElementById('bookRackId').value
+            };
+
+            try {
+                const response = await fetch(`${window.API_URL}/books`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(book)
+                });
+
+                if (response.ok) {
+                    showMessage('addBookMessage', 'Book added successfully!', 'success');
+                    document.getElementById('addBookForm').reset();
+                    document.getElementById('sectionDescription').style.display = 'none';
+                    document.getElementById('bookRackId').innerHTML = '<option value="">Select section first</option>';
+                } else {
+                    showMessage('addBookMessage', 'Failed to add book. Please try again.', 'error');
+                }
+            } catch (error) {
+                showMessage('addBookMessage', 'Error connecting to server. Please check if API is running.', 'error');
+            }
+        });
+
+        loadSectionsForForm();
+    </script>
+}

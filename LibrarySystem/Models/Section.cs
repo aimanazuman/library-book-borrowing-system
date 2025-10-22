@@ -1,5 +1,4 @@
-﻿// Models/Section.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace LibrarySystem.Models
 {

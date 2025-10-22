@@ -24,7 +24,7 @@ namespace LibrarySystem.Controllers
             return await _context.Sections.Include(s => s.Books).ToListAsync();
         }
 
-        // GET: api/Sections/5
+        // GET: api/Sections/[numbers such as 2]
         [HttpGet("{id}")]
         public async Task<ActionResult<Section>> GetSection(int id)
         {
@@ -48,7 +48,7 @@ namespace LibrarySystem.Controllers
             return CreatedAtAction(nameof(GetSection), new { id = section.SectionId }, section);
         }
 
-        // PUT: api/Sections/5
+        // PUT: api/Sections/[numbers such as 1]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutSection(int id, Section section)
         {
@@ -75,7 +75,7 @@ namespace LibrarySystem.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Sections/5
+        // DELETE: api/Sections/[numbers such as 1]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSection(int id)
         {

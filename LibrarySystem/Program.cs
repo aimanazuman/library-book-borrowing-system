@@ -1,19 +1,16 @@
-// Program.cs
 using Microsoft.EntityFrameworkCore;
 using LibrarySystem.Data;
-using System.Text.Json.Serialization; // Needed for ReferenceHandler
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
-builder.Services.AddControllers()
+builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>
     {
-        // Prevent circular reference errors
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
-
-builder.Services.AddEndpointsApiExplorer(); // Optional but harmless
 
 // Database connection
 builder.Services.AddDbContext<LibraryContext>(options =>
@@ -22,20 +19,30 @@ builder.Services.AddDbContext<LibraryContext>(options =>
 // CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
+    options.AddPolicy("AllowAll",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
 });
 
 var app = builder.Build();
 
-// Middleware pipeline
+// Configure pipeline
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
 app.UseCors("AllowAll");
 app.UseAuthorization();
+
+// Map MVC routes first
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// Map API routes
 app.MapControllers();
 
 app.Run();

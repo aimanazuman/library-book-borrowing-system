@@ -1,5 +1,4 @@
-﻿// Data/LibraryContext.cs
-using LibrarySystem.Models;
+﻿using LibrarySystem.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibrarySystem.Data

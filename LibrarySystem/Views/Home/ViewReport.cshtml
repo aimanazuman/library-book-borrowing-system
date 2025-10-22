@@ -1,0 +1,137 @@
+﻿@{
+    ViewData["Title"] = "View Report";
+}
+
+<h1>Library Reports</h1>
+
+<h2>All Books</h2>
+<table id="booksTable">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Author</th>
+            <th>ISBN</th>
+            <th>Category</th>
+            <th>Section</th>
+            <th>Rack ID</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td colspan="8" style="text-align: center;">Loading...</td></tr>
+    </tbody>
+</table>
+
+<h2 style="margin-top: 3rem;">Borrowing Records</h2>
+<table id="recordsTable">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Book Title</th>
+            <th>Borrower</th>
+            <th>Email</th>
+            <th>Borrow Date</th>
+            <th>Due Date</th>
+            <th>Return Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td colspan="9" style="text-align: center;">Loading...</td></tr>
+    </tbody>
+</table>
+
+@section Scripts {
+    <script>
+        async function loadBooksTable() {
+            try {
+                const response = await fetch(`${window.API_URL}/books`);
+                const books = await response.json();
+
+                const tbody = document.querySelector('#booksTable tbody');
+                tbody.innerHTML = '';
+
+                books.forEach(book => {
+                    const row = `
+                        <tr>
+                            <td>${book.bookId}</td>
+                            <td>${book.title}</td>
+                            <td>${book.author}</td>
+                            <td>${book.isbn}</td>
+                            <td>${book.category || '-'}</td>
+                            <td>${book.section?.sectionName || '-'}</td>
+                            <td>${book.rackId}</td>
+                            <td><span class="status ${book.isAvailable ? 'available' : 'borrowed'}">
+                                ${book.isAvailable ? 'Available' : 'Borrowed'}
+                            </span></td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                document.querySelector('#booksTable tbody').innerHTML =
+                    '<tr><td colspan="8" style="text-align: center;">Error loading books</td></tr>';
+            }
+        }
+
+        async function loadRecordsTable() {
+            try {
+                const response = await fetch(`${window.API_URL}/borrowrecords`);
+                const records = await response.json();
+
+                const tbody = document.querySelector('#recordsTable tbody');
+                tbody.innerHTML = '';
+
+                records.forEach(record => {
+                    const row = `
+                        <tr>
+                            <td>${record.recordId}</td>
+                            <td>${record.book?.title || 'N/A'}</td>
+                            <td>${record.borrowerName}</td>
+                            <td>${record.borrowerEmail}</td>
+                            <td>${new Date(record.borrowDate).toLocaleDateString()}</td>
+                            <td>${new Date(record.dueDate).toLocaleDateString()}</td>
+                            <td>${record.returnDate ? new Date(record.returnDate).toLocaleDateString() : '-'}</td>
+                            <td><span class="status ${record.status.toLowerCase()}">${record.status}</span></td>
+                            <td>
+                                ${record.status === 'Borrowed' ?
+                                    `<button class="action-btn btn-return" onclick="returnBook(${record.recordId})">Return</button>` :
+                                    '-'
+                                }
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                document.querySelector('#recordsTable tbody').innerHTML =
+                    '<tr><td colspan="9" style="text-align: center;">Error loading records</td></tr>';
+            }
+        }
+
+        async function returnBook(recordId) {
+            if (!confirm('Confirm book return?')) return;
+
+            try {
+                const response = await fetch(`${window.API_URL}/borrowrecords/return/${recordId}`, {
+                    method: 'PUT'
+                });
+
+                if (response.ok) {
+                    alert('Book returned successfully!');
+                    loadBooksTable();
+                    loadRecordsTable();
+                } else {
+                    alert('Failed to return book.');
+                }
+            } catch (error) {
+                alert('Error connecting to server.');
+            }
+        }
+
+        loadBooksTable();
+        loadRecordsTable();
+    </script>
+}

@@ -1,5 +1,4 @@
-﻿// Models/Book.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using static System.Collections.Specialized.BitVector32;
 
@@ -34,7 +33,7 @@ namespace LibrarySystem.Models
 
         public DateTime DateAdded { get; set; } = DateTime.Now;
 
-        // Navigation
+        // Navigation section
         [ForeignKey("SectionId")]
         public Section Section { get; set; }
 

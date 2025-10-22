@@ -1,5 +1,4 @@
-﻿// Controllers/BooksController.cs
-using LibrarySystem.Data;
+﻿using LibrarySystem.Data;
 using LibrarySystem.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +24,7 @@ namespace LibrarySystem.Controllers
             return await _context.Books.Include(b => b.Section).ToListAsync();
         }
 
-        // GET: api/Books/5
+        // GET: api/Books/[numbers such as 5]
         [HttpGet("{id}")]
         public async Task<ActionResult<Book>> GetBook(int id)
         {
@@ -49,7 +48,7 @@ namespace LibrarySystem.Controllers
             return CreatedAtAction(nameof(GetBook), new { id = book.BookId }, book);
         }
 
-        // PUT: api/Books/5
+        // PUT: api/Books/[numbers such as 5]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutBook(int id, Book book)
         {
@@ -76,7 +75,7 @@ namespace LibrarySystem.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Books/5
+        // DELETE: api/Books/[numbers such as 5]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBook(int id)
         {

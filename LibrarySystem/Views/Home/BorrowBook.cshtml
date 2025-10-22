@@ -1,0 +1,84 @@
+﻿@{
+    ViewData["Title"] = "Borrow Book";
+}
+
+<h1>Borrow a Book</h1>
+<div id="borrowMessage" class="message"></div>
+
+<div class="form-container">
+    <form id="borrowBookForm">
+        <div class="form-group">
+            <label>Select Book *</label>
+            <select id="borrowBookId" required>
+                <option value="">Loading available books...</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Borrower Name *</label>
+            <input type="text" id="borrowerName" required>
+        </div>
+
+        <div class="form-group">
+            <label>Borrower Email *</label>
+            <input type="email" id="borrowerEmail" required>
+        </div>
+
+        <button type="submit">Borrow Book</button>
+        <button type="reset" class="btn-secondary">Clear Form</button>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        async function loadAvailableBooks() {
+            try {
+                const response = await fetch(`${window.API_URL}/books`);
+                const books = await response.json();
+
+                const select = document.getElementById('borrowBookId');
+                select.innerHTML = '<option value="">Select a book</option>';
+
+                books.filter(book => book.isAvailable).forEach(book => {
+                    const option = document.createElement('option');
+                    option.value = book.bookId;
+                    option.textContent = `${book.title} by ${book.author} (${book.rackId})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                document.getElementById('borrowBookId').innerHTML = '<option value="">Error loading books</option>';
+            }
+        }
+
+        document.getElementById('borrowBookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const record = {
+                bookId: parseInt(document.getElementById('borrowBookId').value),
+                borrowerName: document.getElementById('borrowerName').value,
+                borrowerEmail: document.getElementById('borrowerEmail').value
+            };
+
+            try {
+                const response = await fetch(`${window.API_URL}/borrowrecords`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(record)
+                });
+
+                if (response.ok) {
+                    showMessage('borrowMessage', 'Book borrowed successfully! Due in 14 days.', 'success');
+                    document.getElementById('borrowBookForm').reset();
+                    loadAvailableBooks();
+                } else {
+                    const error = await response.text();
+                    showMessage('borrowMessage', error || 'Failed to borrow book.', 'error');
+                }
+            } catch (error) {
+                showMessage('borrowMessage', 'Error connecting to server. Please check if API is running.', 'error');
+            }
+        });
+
+        loadAvailableBooks();
+    </script>
+}
