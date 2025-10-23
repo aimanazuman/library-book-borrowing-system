@@ -16,10 +16,11 @@
             <th>Section</th>
             <th>Rack ID</th>
             <th>Status</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-        <tr><td colspan="8" style="text-align: center;">Loading...</td></tr>
+        <tr><td colspan="9" style="text-align: center;">Loading...</td></tr>
     </tbody>
 </table>
 
@@ -53,6 +54,11 @@
                 const tbody = document.querySelector('#booksTable tbody');
                 tbody.innerHTML = '';
 
+                if (books.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No books found</td></tr>';
+                    return;
+                }
+
                 books.forEach(book => {
                     const row = `
                         <tr>
@@ -66,13 +72,17 @@
                             <td><span class="status ${book.isAvailable ? 'available' : 'borrowed'}">
                                 ${book.isAvailable ? 'Available' : 'Borrowed'}
                             </span></td>
+                            <td>
+                                <button class="action-btn btn-delete" onclick="deleteBook(${book.bookId})">Delete</button>
+                            </td>
                         </tr>
                     `;
                     tbody.innerHTML += row;
                 });
             } catch (error) {
+                console.error('Error loading books:', error);
                 document.querySelector('#booksTable tbody').innerHTML =
-                    '<tr><td colspan="8" style="text-align: center;">Error loading books</td></tr>';
+                    '<tr><td colspan="9" style="text-align: center;">Error loading books</td></tr>';
             }
         }
 
@@ -83,6 +93,11 @@
 
                 const tbody = document.querySelector('#recordsTable tbody');
                 tbody.innerHTML = '';
+
+                if (records.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No borrow records found</td></tr>';
+                    return;
+                }
 
                 records.forEach(record => {
                     const row = `
@@ -98,16 +113,38 @@
                             <td>
                                 ${record.status === 'Borrowed' ?
                                     `<button class="action-btn btn-return" onclick="returnBook(${record.recordId})">Return</button>` :
-                                    '-'
+                                    ''
                                 }
+                                <button class="action-btn btn-delete" onclick="deleteBorrowRecord(${record.recordId})">Delete</button>
                             </td>
                         </tr>
                     `;
                     tbody.innerHTML += row;
                 });
             } catch (error) {
+                console.error('Error loading records:', error);
                 document.querySelector('#recordsTable tbody').innerHTML =
                     '<tr><td colspan="9" style="text-align: center;">Error loading records</td></tr>';
+            }
+        }
+
+        async function deleteBook(bookId) {
+            if (!confirm('Are you sure you want to delete this book?')) return;
+
+            try {
+                const response = await fetch(`${window.API_URL}/books/${bookId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Book deleted successfully!');
+                    loadBooksTable();
+                } else {
+                    const error = await response.text();
+                    alert(error || 'Failed to delete book.');
+                }
+            } catch (error) {
+                alert('Error connecting to server.');
             }
         }
 
@@ -131,6 +168,27 @@
             }
         }
 
+        async function deleteBorrowRecord(recordId) {
+            if (!confirm('Are you sure you want to delete this borrow record?')) return;
+
+            try {
+                const response = await fetch(`${window.API_URL}/borrowrecords/${recordId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Borrow record deleted successfully!');
+                    loadBooksTable();
+                    loadRecordsTable();
+                } else {
+                    alert('Failed to delete record.');
+                }
+            } catch (error) {
+                alert('Error connecting to server.');
+            }
+        }
+
+        // Load data on page load
         loadBooksTable();
         loadRecordsTable();
     </script>

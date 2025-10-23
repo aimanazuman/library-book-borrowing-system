@@ -19,6 +19,12 @@
             <textarea id="sectionDescription" required placeholder="Brief description of this section" rows="3"></textarea>
         </div>
 
+        <div class="form-group">
+            <label>Rack IDs * (comma-separated)</label>
+            <input type="text" id="sectionRacks" required placeholder="e.g., H1, H2, H3, H4, H5, H6, H7, H8, H9, H10">
+            <small style="display: block; margin-top: 0.5rem; color: #7f8c8d;">Enter rack IDs separated by commas. These will be available when adding books to this section.</small>
+        </div>
+
         <button type="submit">Add Section</button>
         <button type="reset" class="btn-secondary">Clear</button>
     </form>
@@ -32,16 +38,17 @@
             <th>ID</th>
             <th>Section Name</th>
             <th>Description</th>
+            <th>Rack IDs</th>
             <th>Number of Books</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-        <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
+        <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
     </tbody>
 </table>
 
-<!-- Edit Modal (Hidden by default) -->
+<!-- Edit Modal -->
 <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
     <div style="background: white; max-width: 500px; margin: 100px auto; padding: 2rem; border-radius: 5px;">
         <h2>Edit Section</h2>
@@ -55,6 +62,11 @@
                 <label>Description *</label>
                 <textarea id="editSectionDescription" required rows="3"></textarea>
             </div>
+            <div class="form-group">
+                <label>Rack IDs * (comma-separated)</label>
+                <input type="text" id="editSectionRacks" required placeholder="e.g., H1, H2, H3">
+                <small style="display: block; margin-top: 0.5rem; color: #7f8c8d;">Enter rack IDs separated by commas.</small>
+            </div>
             <button type="submit">Update</button>
             <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
         </form>
@@ -63,6 +75,9 @@
 
 @section Scripts {
     <script>
+        // Store section racks mapping
+        let sectionRacksMap = {};
+
         async function loadSectionsTable() {
             try {
                 const response = await fetch(`${window.API_URL}/sections`);
@@ -72,34 +87,73 @@
                 tbody.innerHTML = '';
 
                 if (sections.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No sections found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No sections found</td></tr>';
                     return;
                 }
 
                 sections.forEach(section => {
                     const bookCount = section.books ? section.books.length : 0;
+                    const racks = getSectionRacks(section.sectionId);
+                    const racksDisplay = racks.length > 0 ? racks.join(', ') : 'Not configured';
+
                     const row = `
                         <tr>
                             <td>${section.sectionId}</td>
                             <td>${section.sectionName}</td>
                             <td>${section.description || '-'}</td>
+                            <td>${racksDisplay}</td>
                             <td>${bookCount}</td>
                             <td>
-                                <button class="action-btn" style="background: #3498db;" onclick="editSection(${section.sectionId}, '${section.sectionName}', '${section.description}')">Edit</button>
-                                <button class="action-btn btn-delete" onclick="deleteSection(${section.sectionId}, ${bookCount})">Delete</button>
+                                <div class="action-buttons">
+                                    <button class="action-btn btn-edit" onclick="editSection(${section.sectionId}, '${section.sectionName.replace(/'/g, "\\'")}', '${(section.description || '').replace(/'/g, "\\'")}')">Edit</button>
+                                    <button class="action-btn btn-delete" onclick="deleteSection(${section.sectionId}, ${bookCount})">Delete</button>
+                                </div>
                             </td>
                         </tr>
                     `;
                     tbody.innerHTML += row;
                 });
+
+                // Update site.js rack mapping
+                updateGlobalRackMapping();
             } catch (error) {
                 document.querySelector('#sectionsTable tbody').innerHTML =
-                    '<tr><td colspan="5" style="text-align: center;">Error loading sections</td></tr>';
+                    '<tr><td colspan="6" style="text-align: center;">Error loading sections</td></tr>';
             }
+        }
+
+        function getSectionRacks(sectionId) {
+            // Load from localStorage
+            const stored = localStorage.getItem(`section_${sectionId}_racks`);
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function saveSectionRacks(sectionId, racks) {
+            localStorage.setItem(`section_${sectionId}_racks`, JSON.stringify(racks));
+            sectionRacksMap[sectionId] = racks;
+        }
+
+        function updateGlobalRackMapping() {
+            // Update the global racksBySection in site.js
+            const allRacks = {};
+            Object.keys(sectionRacksMap).forEach(sectionId => {
+                allRacks[sectionId] = sectionRacksMap[sectionId];
+            });
+
+            // Update window object so other pages can access
+            window.racksBySection = allRacks;
         }
 
         document.getElementById('addSectionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            const racksInput = document.getElementById('sectionRacks').value;
+            const racks = racksInput.split(',').map(r => r.trim()).filter(r => r.length > 0);
+
+            if (racks.length === 0) {
+                showMessage('sectionMessage', 'Please enter at least one rack ID.', 'error');
+                return;
+            }
 
             const section = {
                 sectionName: document.getElementById('sectionName').value,
@@ -114,6 +168,11 @@
                 });
 
                 if (response.ok) {
+                    const createdSection = await response.json();
+
+                    // Save racks for this section
+                    saveSectionRacks(createdSection.sectionId, racks);
+
                     showMessage('sectionMessage', 'Section added successfully!', 'success');
                     document.getElementById('addSectionForm').reset();
                     loadSectionsTable();
@@ -129,6 +188,11 @@
             document.getElementById('editSectionId').value = id;
             document.getElementById('editSectionName').value = name;
             document.getElementById('editSectionDescription').value = description;
+
+            // Load existing racks
+            const racks = getSectionRacks(id);
+            document.getElementById('editSectionRacks').value = racks.join(', ');
+
             document.getElementById('editModal').style.display = 'block';
         }
 
@@ -140,6 +204,14 @@
             e.preventDefault();
 
             const id = document.getElementById('editSectionId').value;
+            const racksInput = document.getElementById('editSectionRacks').value;
+            const racks = racksInput.split(',').map(r => r.trim()).filter(r => r.length > 0);
+
+            if (racks.length === 0) {
+                alert('Please enter at least one rack ID.');
+                return;
+            }
+
             const section = {
                 sectionId: parseInt(id),
                 sectionName: document.getElementById('editSectionName').value,
@@ -154,6 +226,9 @@
                 });
 
                 if (response.ok) {
+                    // Save racks for this section
+                    saveSectionRacks(parseInt(id), racks);
+
                     showMessage('sectionMessage', 'Section updated successfully!', 'success');
                     closeEditModal();
                     loadSectionsTable();
@@ -179,6 +254,10 @@
                 });
 
                 if (response.ok) {
+                    // Remove racks from storage
+                    localStorage.removeItem(`section_${id}_racks`);
+                    delete sectionRacksMap[id];
+
                     showMessage('sectionMessage', 'Section deleted successfully!', 'success');
                     loadSectionsTable();
                 } else {
@@ -189,6 +268,27 @@
             }
         }
 
+        // Load existing sections and build rack mapping
+        async function initializeRackMapping() {
+            try {
+                const response = await fetch(`${window.API_URL}/sections`);
+                const sections = await response.json();
+
+                sections.forEach(section => {
+                    const racks = getSectionRacks(section.sectionId);
+                    if (racks.length > 0) {
+                        sectionRacksMap[section.sectionId] = racks;
+                    }
+                });
+
+                updateGlobalRackMapping();
+            } catch (error) {
+                console.error('Error initializing rack mapping:', error);
+            }
+        }
+
+        // Initialize on page load
+        initializeRackMapping();
         loadSectionsTable();
     </script>
 }

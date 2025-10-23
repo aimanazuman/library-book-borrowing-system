@@ -4,7 +4,14 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
+// Add services - Controllers for both MVC and API
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
+
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>
     {
@@ -16,7 +23,7 @@ builder.Services.AddControllersWithViews()
 builder.Services.AddDbContext<LibraryContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// CORS
+// CORS - Must allow all for API calls
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -30,19 +37,19 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure pipeline
+// Configure pipeline - ORDER MATTERS
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-app.UseCors("AllowAll");
+app.UseCors("AllowAll");  // CORS must be after UseRouting and before UseAuthorization
 app.UseAuthorization();
 
-// Map MVC routes first
+// Map routes - API routes first
+app.MapControllers();  // Maps API controllers with [ApiController] attribute
+
+// Then MVC routes
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
-
-// Map API routes
-app.MapControllers();
 
 app.Run();

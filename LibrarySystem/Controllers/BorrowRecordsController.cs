@@ -18,30 +18,78 @@ namespace LibrarySystem.Controllers
 
         // GET: api/BorrowRecords
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<BorrowRecord>>> GetBorrowRecords()
+        public async Task<ActionResult<IEnumerable<object>>> GetBorrowRecords()
         {
-            return await _context.BorrowRecords.Include(br => br.Book).ToListAsync();
+            var records = await _context.BorrowRecords
+                .Include(br => br.Book)
+                .Select(br => new
+                {
+                    br.RecordId,
+                    br.BookId,
+                    br.BorrowerName,
+                    br.BorrowerEmail,
+                    br.BorrowDate,
+                    br.DueDate,
+                    br.ReturnDate,
+                    br.Status,
+                    Book = new
+                    {
+                        br.Book.BookId,
+                        br.Book.Title,
+                        br.Book.Author,
+                        br.Book.ISBN
+                    }
+                })
+                .ToListAsync();
+
+            return Ok(records);
         }
 
-        // GET: api/BorrowRecords/[numbers such as 4]
+        // GET: api/BorrowRecords/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<BorrowRecord>> GetBorrowRecord(int id)
+        public async Task<ActionResult<object>> GetBorrowRecord(int id)
         {
-            var record = await _context.BorrowRecords.Include(br => br.Book).FirstOrDefaultAsync(br => br.RecordId == id);
+            var record = await _context.BorrowRecords
+                .Include(br => br.Book)
+                .Where(br => br.RecordId == id)
+                .Select(br => new
+                {
+                    br.RecordId,
+                    br.BookId,
+                    br.BorrowerName,
+                    br.BorrowerEmail,
+                    br.BorrowDate,
+                    br.DueDate,
+                    br.ReturnDate,
+                    br.Status,
+                    Book = new
+                    {
+                        br.Book.BookId,
+                        br.Book.Title,
+                        br.Book.Author,
+                        br.Book.ISBN
+                    }
+                })
+                .FirstOrDefaultAsync();
 
             if (record == null)
             {
                 return NotFound();
             }
 
-            return record;
+            return Ok(record);
         }
 
         // POST: api/BorrowRecords (Borrow Book)
         [HttpPost]
-        public async Task<ActionResult<BorrowRecord>> PostBorrowRecord(BorrowRecord record)
+        public async Task<ActionResult> PostBorrowRecord([FromBody] BorrowRecordDto recordDto)
         {
-            var book = await _context.Books.FindAsync(record.BookId);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var book = await _context.Books.FindAsync(recordDto.BookId);
             if (book == null)
             {
                 return NotFound("Book not found");
@@ -52,11 +100,17 @@ namespace LibrarySystem.Controllers
                 return BadRequest("Book is not available");
             }
 
-            // Set book as unavailable
+            var record = new BorrowRecord
+            {
+                BookId = recordDto.BookId,
+                BorrowerName = recordDto.BorrowerName,
+                BorrowerEmail = recordDto.BorrowerEmail,
+                BorrowDate = DateTime.Now,
+                DueDate = DateTime.Now.AddDays(14),
+                Status = "Borrowed"
+            };
+
             book.IsAvailable = false;
-            record.Status = "Borrowed";
-            record.BorrowDate = DateTime.Now;
-            record.DueDate = DateTime.Now.AddDays(14); // 14 days borrow period
 
             _context.BorrowRecords.Add(record);
             await _context.SaveChangesAsync();
@@ -64,7 +118,7 @@ namespace LibrarySystem.Controllers
             return CreatedAtAction(nameof(GetBorrowRecord), new { id = record.RecordId }, record);
         }
 
-        // PUT: api/BorrowRecords/Return/[numbers such as 4] (Return Book)
+        // PUT: api/BorrowRecords/Return/5 (Return Book)
         [HttpPut("Return/{id}")]
         public async Task<IActionResult> ReturnBook(int id)
         {
@@ -80,11 +134,8 @@ namespace LibrarySystem.Controllers
                 return BadRequest("Book already returned");
             }
 
-            // Update record
             record.ReturnDate = DateTime.Now;
             record.Status = "Returned";
-
-            // Set book as available
             record.Book.IsAvailable = true;
 
             await _context.SaveChangesAsync();
@@ -92,14 +143,19 @@ namespace LibrarySystem.Controllers
             return NoContent();
         }
 
-        // DELETE: api/BorrowRecords/[numbers such as 4]
+        // DELETE: api/BorrowRecords/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBorrowRecord(int id)
         {
-            var record = await _context.BorrowRecords.FindAsync(id);
+            var record = await _context.BorrowRecords.Include(br => br.Book).FirstOrDefaultAsync(br => br.RecordId == id);
             if (record == null)
             {
                 return NotFound();
+            }
+
+            if (record.Status == "Borrowed" && record.Book != null)
+            {
+                record.Book.IsAvailable = true;
             }
 
             _context.BorrowRecords.Remove(record);
@@ -107,5 +163,13 @@ namespace LibrarySystem.Controllers
 
             return NoContent();
         }
+    }
+
+    // DTO for BorrowRecord - no navigation properties
+    public class BorrowRecordDto
+    {
+        public int BookId { get; set; }
+        public string BorrowerName { get; set; }
+        public string BorrowerEmail { get; set; }
     }
 }
