@@ -104,10 +104,8 @@
                             <td>${racksDisplay}</td>
                             <td>${bookCount}</td>
                             <td>
-                                <div class="action-buttons">
-                                    <button class="action-btn btn-edit" onclick="editSection(${section.sectionId}, '${section.sectionName.replace(/'/g, "\\'")}', '${(section.description || '').replace(/'/g, "\\'")}')">Edit</button>
-                                    <button class="action-btn btn-delete" onclick="deleteSection(${section.sectionId}, ${bookCount})">Delete</button>
-                                </div>
+                                <button class="action-btn" onclick="editSection(${section.sectionId}, '${section.sectionName.replace(/'/g, "\\'")}', '${(section.description || '').replace(/'/g, "\\'")}')">Edit</button>
+                                <button class="action-btn btn-delete" onclick="deleteSection(${section.sectionId}, ${bookCount})">Delete</button>
                             </td>
                         </tr>
                     `;
